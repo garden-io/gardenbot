@@ -4,3 +4,6 @@
 /data.ms
 /*BotConfig.toml
 /*.png
+/*.garden
+chart/charts/helmet-*.tgz
+chart/requirements.lock

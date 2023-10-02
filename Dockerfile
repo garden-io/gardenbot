@@ -1,22 +1,32 @@
-FROM getmeili/meilisearch:v1.1 as meilisearch_alpine
+# syntax=docker/dockerfile:1
+FROM rust AS builder
+WORKDIR /src/
+COPY . .
 
-FROM alpine:3.16
+RUN mkdir /artifacts/
+# Create cache mount for both the `target` folder
+# And a cache mount for the cargo registry
+RUN \
+    # --mount=type=cache,target=/src/target,rw \
+    --mount=type=cache,target=/usr/local/cargo/registry,rw \
+    --mount=type=cache,target=${RUST_HOME},rw 
+RUN cargo build --release
 
-ARG APP_DIR="/app"
-ENV PATH="${APP_DIR}:${PATH}"
-RUN mkdir -m 0755 -p "${APP_DIR}"
+# Copy all of the executables in the root of the target directory
+RUN \
+    # --mount=type=cache,target=/src/target,rw \
+    find /src/target/release/ \
+        -maxdepth 1 \
+        -type f -executable \
+        -exec cp {} /artifacts/ \;
 
-# Meilisearch
-# ENV MEILI_DB_PATH="/app/data.ms"
-# RUN url="https://github.com/meilisearch/meilisearch/releases/download/v1.1.0/meilisearch-linux-amd64" && \
-# 	path="/app/meilisearch" \
-# 	&& curl -L "${url}" -o "${path}" \
-# 	&& chmod +x "${path}"
-RUN apk add --no-cache libgcc
-COPY --from=meilisearch_alpine --chown=root:root /bin/meilisearch ${APP_DIR}/meilisearch
+# This is a lighter image that only contains the artifacts
+FROM alpine AS build-artifacts
+COPY --from=builder /artifacts/ /artifacts/
 
-# Bot
-COPY target/x86_64-unknown-linux-musl/release/optimus ${APP_DIR}/optimus
-
-# Automatically start meilisearch, and read a BotConfig.toml from ${APP_DIR} (if exists)
-ENTRYPOINT ["optimus"]
+# Optimus AKA GardenBot
+FROM rust:slim AS optimus
+COPY --from=build-artifacts \
+    /artifacts/optimus \
+    /app/optimus
+ENTRYPOINT ["/app/optimus"]

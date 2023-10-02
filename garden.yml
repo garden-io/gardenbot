@@ -1,0 +1,19 @@
+kind: Build
+type: container # This makes Garden aware that there's a Dockerfile here that needs to be built.
+name: bot-image
+
+---
+
+kind: Deploy
+type: helm
+name: bot-deploy
+dependencies:
+  - build.bot-image
+spec:
+  chart:
+    path: ./chart
+  values:
+    image:
+      registry: null
+      repository: ${actions.build.bot-image.outputs.deployment-image-name}
+      tag: ${actions.build.bot-image.version}

@@ -1,0 +1,9 @@
+name: gardenbot
+version: 0.1.0
+
+dependencies:
+  - name: helmet
+    version: 0.9.0
+    repository: https://companyinfo.github.io/helm-charts
+    import-values: # <== It is mandatory if you want to import the Helmet default values.
+      - defaults
